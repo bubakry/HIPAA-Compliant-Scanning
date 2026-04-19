@@ -353,14 +353,6 @@ That keeps the pipeline deterministic without hard-coding a container image befo
 - 100% of regulated storage services use encryption-at-rest controls enforced in Terraform.
 - 100% of deployments produce auditable pipeline evidence in GitHub Actions plus AWS logs.
 
-## Screenshot Placeholders
-
-Drop screenshots here to document a live run:
-
-- `docs/screenshots/01-compliance-dashboard.png` — scanner jobs and artifacts
-- `docs/screenshots/02-blocked-pull-request.png` — PR blocked by Trivy or Gitleaks
-- `docs/screenshots/03-successful-deployment.png` — passing deploy after bootstrap + image push
-
 ## How Other Teams Can Adopt This Pipeline
 
 - Reuse `modules/hipaa-infra` as the regulated baseline for any AWS service stack.
