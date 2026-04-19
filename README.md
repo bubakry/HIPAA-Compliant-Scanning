@@ -1,6 +1,6 @@
 # HIPAA-Compliant AWS Infrastructure Pipeline with GitHub Actions & Multi-Tool Scanning
 
-Production-grade DevSecOps portfolio project that demonstrates how to enforce HIPAA-aligned security controls across Terraform IaC, container images, application code, secrets, and open source dependencies before anything reaches AWS.
+A reference DevSecOps pipeline that enforces HIPAA-aligned security controls across Terraform IaC, container images, application code, secrets, and open source dependencies before anything reaches AWS.
 
 The repository uses:
 
@@ -10,14 +10,12 @@ The repository uses:
 - ECS Fargate to run a sample FastAPI microservice
 - Checkov, tfsec, Trivy, Semgrep, Gitleaks, and OWASP Dependency-Check as mandatory security gates
 
-## Why This Project Exists
+## Goals
 
-This repo was designed to map directly to a Senior AWS DevOps Engineer role that prioritizes:
-
-- Implementing security measures and proving compliance with HIPAA-aligned controls
-- Automating compliance scanning and audit logging
-- Designing reusable patterns that other teams can adopt organization-wide
-- Shifting security left in CI/CD so critical issues never merge or deploy
+- Implement security measures and prove compliance with HIPAA-aligned controls
+- Automate compliance scanning and audit logging
+- Provide reusable patterns that other teams can adopt organization-wide
+- Shift security left in CI/CD so critical issues never merge or deploy
 
 ## Architecture
 
@@ -161,28 +159,28 @@ Build behavior:
 - Any failed Terraform validation, secret finding, SAST finding, or high/critical vulnerability breaks the workflow.
 - Production deployment only starts after the `Compliance Scan` workflow succeeds on a push to `main`.
 
-## Direct Mapping to the Job Description
+## What the Pipeline Enforces
 
-### Implementing security measures and ensuring compliance
+### Security and compliance
 
-- Enforces encryption at rest with KMS across core data stores.
-- Enforces TLS in transit at the ALB and database layer.
-- Captures immutable audit evidence with CloudTrail validation and flow logs.
-- Prevents insecure Terraform, code, image, and dependency changes from landing.
+- Encryption at rest with KMS across core data stores.
+- TLS in transit at the ALB and database layer.
+- Immutable audit evidence with CloudTrail log file validation and VPC flow logs.
+- Blocks insecure Terraform, code, image, and dependency changes before merge.
 
-### Automated compliance scanning and audit logging
+### Automated scanning and logging
 
-- Uses GitHub Actions for mandatory scans on every PR and push.
-- Includes custom Checkov HIPAA policy files, not only built-in checks.
-- Publishes scanner artifacts and SARIF-compatible outputs for security visibility.
+- GitHub Actions runs mandatory scans on every PR and push.
+- Ships custom Checkov HIPAA policy files alongside the built-in checks.
+- Publishes scanner artifacts and SARIF-compatible outputs.
 
-### Designing reusable solutions for organization-wide leverage
+### Reusability
 
-- Separates the baseline infrastructure module from the workload module.
-- Keeps CI/CD OIDC, backend state, and deployment sequencing generic enough for reuse.
-- Makes compliance controls visible as code, not tribal knowledge.
+- Baseline infrastructure module is separated from the workload module.
+- CI/CD OIDC, backend state, and deployment sequencing are generic enough to be reused.
+- Compliance controls are expressed as code, not tribal knowledge.
 
-### Heavy bias toward automation, IaC, and shift-left security
+### Automation and shift-left
 
 - Terraform owns the infrastructure baseline and ECS deployment target.
 - GitHub Actions owns scan, plan, bootstrap, image publish, and gated apply.
@@ -341,7 +339,7 @@ The apply workflow intentionally uses two stages:
 
 That keeps the pipeline deterministic without hard-coding a container image before ECR exists.
 
-## Notes for Interview Discussion
+## Design Notes
 
 - The ALB access log bucket is intentionally separate from the regulated data bucket because AWS Application Load Balancer access logs only support `SSE-S3`, while the regulated data bucket enforces `SSE-KMS`.
 - The repo is designed so the compliance baseline can be reused even when the application module changes.
@@ -357,35 +355,11 @@ That keeps the pipeline deterministic without hard-coding a container image befo
 
 ## Screenshot Placeholders
 
-Add screenshots here when you publish the portfolio:
+Drop screenshots here to document a live run:
 
-- `docs/screenshots/01-compliance-dashboard.png`
-- `docs/screenshots/02-blocked-pull-request.png`
-- `docs/screenshots/03-successful-deployment.png`
-
-Suggested captions:
-
-- Security dashboard showing all scanner jobs and artifacts
-- A blocked PR caused by a failed Trivy or Gitleaks gate
-- A passing deployment after the bootstrap, image push, and final ECS apply
-
-## Ready-to-Use STAR Story
-
-### Situation
-
-A healthcare-oriented engineering organization needed a reusable AWS deployment pattern that could enforce HIPAA-aligned controls before infrastructure or application changes reached production.
-
-### Task
-
-Design a pipeline that could standardize encryption, audit logging, least privilege, and automated compliance checks across teams while removing reliance on manual reviews.
-
-### Action
-
-I built a modular Terraform baseline for VPC, KMS, S3, RDS, CloudTrail, IAM, and ECS Fargate, then integrated GitHub Actions with OIDC-based AWS access and six separate scanners covering IaC, containers, code, secrets, and dependencies. I also structured the deployment so the application image only ships after all compliance gates pass.
-
-### Result
-
-The solution enforces 100% mandatory scanning on every PR and push, blocks critical findings from merging, removes static AWS credentials from CI/CD, and provides a reusable pattern other teams can adopt with minimal customization.
+- `docs/screenshots/01-compliance-dashboard.png` — scanner jobs and artifacts
+- `docs/screenshots/02-blocked-pull-request.png` — PR blocked by Trivy or Gitleaks
+- `docs/screenshots/03-successful-deployment.png` — passing deploy after bootstrap + image push
 
 ## How Other Teams Can Adopt This Pipeline
 
