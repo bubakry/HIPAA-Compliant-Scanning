@@ -1,0 +1,20 @@
+metadata:
+  id: "CKV2_AWS_9001"
+  name: "Ensure CloudTrail is multi-region and validates every audit log file"
+  category: "LOGGING"
+  severity: "CRITICAL"
+  guideline: "HIPAA 164.312(b): retain tamper-evident audit controls."
+scope:
+  provider: aws
+definition:
+  and:
+    - cond_type: "attribute"
+      resource_types:
+        - "aws_cloudtrail"
+      attribute: "enable_log_file_validation"
+      operator: "is_true"
+    - cond_type: "attribute"
+      resource_types:
+        - "aws_cloudtrail"
+      attribute: "is_multi_region_trail"
+      operator: "is_true"

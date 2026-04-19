@@ -1,0 +1,11 @@
+title = "HIPAA Compliant AWS Pipeline Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow repository examples and placeholders without suppressing real code leaks."
+paths = [
+  '''terraform\.tfvars\.example''',
+  '''README\.md''',
+]

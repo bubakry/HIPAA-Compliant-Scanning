@@ -1,0 +1,35 @@
+rules:
+  - id: hipaa-fastapi-debug-disabled
+    languages:
+      - python
+    message: FastAPI debug mode must remain disabled in regulated environments.
+    pattern: FastAPI(..., debug=True, ...)
+    severity: ERROR
+    metadata:
+      category: security
+      compliance:
+        - HIPAA
+
+  - id: hipaa-python-subprocess-shell-true
+    languages:
+      - python
+    message: subprocess shell execution is forbidden in the sample service.
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+    severity: ERROR
+    metadata:
+      category: security
+      compliance:
+        - HIPAA
+
+  - id: hipaa-insecure-tls-verification
+    languages:
+      - python
+    message: TLS verification may not be disabled in a HIPAA-aligned service.
+    pattern-either:
+      - pattern: requests.$METHOD(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+    severity: ERROR
+    metadata:
+      category: security
+      compliance:
+        - HIPAA

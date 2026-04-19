@@ -1,0 +1,21 @@
+metadata:
+  id: "CKV2_AWS_9002"
+  name: "Ensure ECS execute-command sessions are logged and encrypted with a customer KMS key"
+  category: "ENCRYPTION"
+  severity: "CRITICAL"
+  guideline: "HIPAA 164.312(a)(2)(iv): protect administrative sessions and PHI handling paths."
+scope:
+  provider: aws
+definition:
+  and:
+    - cond_type: "attribute"
+      resource_types:
+        - "aws_ecs_cluster"
+      attribute: "configuration.*.execute_command_configuration.*.logging"
+      operator: "contains"
+      value: "OVERRIDE"
+    - cond_type: "attribute"
+      resource_types:
+        - "aws_ecs_cluster"
+      attribute: "configuration.*.execute_command_configuration.*.kms_key_id"
+      operator: "exists"

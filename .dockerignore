@@ -1,0 +1,9 @@
+.git
+.github
+.pytest_cache
+.terraform
+.venv
+__pycache__
+docs/screenshots
+reports
+tests

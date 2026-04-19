@@ -1,0 +1,22 @@
+metadata:
+  id: "CKV2_AWS_9004"
+  name: "Ensure the internet-facing application listener enforces modern TLS"
+  category: "ENCRYPTION"
+  severity: "HIGH"
+  guideline: "HIPAA 164.312(e)(1): protect PHI in transit."
+scope:
+  provider: aws
+definition:
+  and:
+    - cond_type: "attribute"
+      resource_types:
+        - "aws_lb_listener"
+      attribute: "protocol"
+      operator: "equals"
+      value: "HTTPS"
+    - cond_type: "attribute"
+      resource_types:
+        - "aws_lb_listener"
+      attribute: "ssl_policy"
+      operator: "equals"
+      value: "ELBSecurityPolicy-TLS13-1-2-2021-06"

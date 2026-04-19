@@ -1,0 +1,16 @@
+.pytest_cache/
+.terraform/
+.venv/
+.tools/
+__pycache__/
+*.pyc
+*.tfstate
+*.tfstate.*
+coverage.xml
+dependency-check/
+reports/
+terraform.tfvars
+docs/reports/*.txt
+docs/reports/*.json
+docs/reports/*.sarif
+.DS_Store

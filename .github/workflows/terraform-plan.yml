@@ -1,0 +1,92 @@
+name: Terraform Plan
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: plan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: "1.14.8"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate required secrets
+        env:
+          AWS_TERRAFORM_PLAN_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
+        run: |
+          for variable in AWS_TERRAFORM_PLAN_ROLE_ARN TF_STATE_BUCKET TF_STATE_LOCK_TABLE; do
+            if [ -z "${!variable}" ]; then
+              echo "::error::${variable} is required for terraform-plan.yml"
+              exit 1
+            fi
+          done
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
+
+      - name: Create backend config
+        run: |
+          cat <<EOF > backend.hcl
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "terraform/${{ github.event.repository.name }}/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_STATE_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+
+      - name: Terraform init
+        run: terraform init -input=false -backend-config=backend.hcl
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: |
+          terraform plan \
+            -input=false \
+            -var="github_repository=${GITHUB_REPOSITORY}" \
+            -var="enable_service=false" \
+            -out=tfplan
+
+      - name: Render plan
+        run: terraform show -no-color tfplan > plan.txt
+
+      - name: Publish plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: plan.txt
+
+      - name: Add plan summary
+        run: |
+          {
+            echo "### Terraform Plan"
+            echo
+            echo '```text'
+            sed -n '1,200p' plan.txt
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"

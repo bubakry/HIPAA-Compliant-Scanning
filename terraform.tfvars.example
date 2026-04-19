@@ -1,0 +1,58 @@
+# Core environment
+# ---------------------------------------------------------------------------
+# account_id is intentionally a placeholder. The up.sh/down.sh scripts resolve
+# it from one of the following (in priority order):
+#   1. $TF_VAR_account_id env var
+#   2. AWS Secrets Manager secret named in $HIPAA_CONFIG_SECRET (JSON blob)
+#   3. aws sts get-caller-identity (auto-discovery)
+# You only need to override account_id here if you are running raw `terraform`
+# commands without those helpers.
+# ---------------------------------------------------------------------------
+project_name   = "hipaa-compliant-pipeline"
+environment    = "prod"
+aws_region     = "us-east-1"
+account_id     = "000000000000"
+github_repository = "your-org/HIPAA-Compliant-Scanning"
+github_main_branch = "main"
+
+# Networking
+availability_zones       = ["us-east-1a", "us-east-1b"]
+vpc_cidr                 = "10.42.0.0/16"
+public_subnet_cidrs      = ["10.42.0.0/24", "10.42.1.0/24"]
+private_app_subnet_cidrs = ["10.42.10.0/24", "10.42.11.0/24"]
+private_db_subnet_cidrs  = ["10.42.20.0/24", "10.42.21.0/24"]
+allowed_alb_ingress_cidrs = ["203.0.113.0/24"]
+
+# Database
+db_name                  = "hipaadb"
+db_username              = "hipaa_admin"
+db_engine_version        = "16.4"
+db_instance_class        = "db.t4g.small"
+db_allocated_storage     = 100
+db_max_allocated_storage = 200
+db_multi_az              = true
+
+# TLS / DNS
+acm_certificate_arn    = "arn:aws:acm:us-east-1:000000000000:certificate/replace-me"
+application_domain_name = "api.example.com"
+route53_zone_id         = "Z1234567890ABC"
+
+# ECS application
+container_port   = 8080
+ecs_desired_count = 2
+ecs_cpu          = 512
+ecs_memory       = 1024
+
+# Bootstrap with false until the workflow has pushed the image to ECR.
+enable_service = false
+container_image = null
+
+# Leave true for production. Set false before running `terraform destroy` so
+# RDS, the S3 buckets, KMS, Secrets Manager, the ALB, and ECR can be torn down
+# without manual cleanup. Re-apply with this flipped, then run destroy.
+production_safeguards = true
+
+tags = {
+  CostCenter = "security-engineering"
+  Owner      = "platform-team"
+}

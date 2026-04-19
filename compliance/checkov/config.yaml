@@ -1,0 +1,9 @@
+framework:
+  - terraform
+compact: true
+download-external-modules: false
+external-checks-dir:
+  - compliance/checkov/policies
+quiet: true
+skip-path:
+  - .terraform

@@ -1,0 +1,11 @@
+exit-code: 1
+ignore-unfixed: false
+scanners:
+  - vuln
+  - misconfig
+severity:
+  - HIGH
+  - CRITICAL
+skip-dirs:
+  - .terraform
+timeout: 10m

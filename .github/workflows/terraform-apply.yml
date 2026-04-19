@@ -1,0 +1,141 @@
+name: Terraform Apply
+
+on:
+  workflow_run:
+    workflows:
+      - Compliance Scan
+    types:
+      - completed
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: "1.14.8"
+
+jobs:
+  apply:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event_name == 'workflow_run' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Validate required secrets
+        env:
+          AWS_TERRAFORM_APPLY_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_APPLY_ROLE_ARN }}
+          TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
+          TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
+          ACM_CERTIFICATE_ARN: ${{ vars.ACM_CERTIFICATE_ARN }}
+        run: |
+          for variable in AWS_TERRAFORM_APPLY_ROLE_ARN TF_STATE_BUCKET TF_STATE_LOCK_TABLE ACM_CERTIFICATE_ARN; do
+            if [ -z "${!variable}" ]; then
+              echo "::error::${variable} is required for terraform-apply.yml"
+              exit 1
+            fi
+          done
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_APPLY_ROLE_ARN }}
+
+      - name: Create backend config
+        run: |
+          cat <<EOF > backend.hcl
+          bucket         = "${{ secrets.TF_STATE_BUCKET }}"
+          key            = "terraform/${{ github.event.repository.name }}/terraform.tfstate"
+          region         = "${{ env.AWS_REGION }}"
+          dynamodb_table = "${{ secrets.TF_STATE_LOCK_TABLE }}"
+          encrypt        = true
+          EOF
+
+      - name: Terraform init
+        run: terraform init -input=false -backend-config=backend.hcl
+
+      - name: Bootstrap platform without the service
+        run: |
+          terraform apply \
+            -auto-approve \
+            -input=false \
+            -var="github_repository=${GITHUB_REPOSITORY}" \
+            -var="enable_service=false"
+
+      - name: Resolve ECR repository
+        id: ecr
+        run: echo "repository_url=$(terraform output -raw ecr_repository_url)" >> "${GITHUB_OUTPUT}"
+
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region "${AWS_REGION}" | \
+            docker login --username AWS --password-stdin "${{ steps.ecr.outputs.repository_url }}"
+
+      - name: Build and push image
+        id: image
+        env:
+          DEPLOY_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          SHORT_SHA="$(echo "${DEPLOY_SHA}" | cut -c1-12)"
+          IMAGE_URI="${{ steps.ecr.outputs.repository_url }}:sha-${SHORT_SHA}"
+          docker build --tag "${IMAGE_URI}" .
+          docker push "${IMAGE_URI}"
+          echo "image_uri=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create deploy variables
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.image_uri }}
+          ACM_CERTIFICATE_ARN: ${{ vars.ACM_CERTIFICATE_ARN }}
+          APPLICATION_DOMAIN_NAME: ${{ vars.APPLICATION_DOMAIN_NAME }}
+          ROUTE53_ZONE_ID: ${{ vars.ROUTE53_ZONE_ID }}
+        run: |
+          jq -n \
+            --arg repo "${GITHUB_REPOSITORY}" \
+            --arg image "${IMAGE_URI}" \
+            --arg cert "${ACM_CERTIFICATE_ARN}" \
+            --arg domain "${APPLICATION_DOMAIN_NAME}" \
+            --arg zone "${ROUTE53_ZONE_ID}" \
+            '{
+              github_repository: $repo,
+              enable_service: true,
+              container_image: $image,
+              acm_certificate_arn: $cert,
+              application_domain_name: (if $domain == "" then null else $domain end),
+              route53_zone_id: (if $zone == "" then null else $zone end)
+            }' > deploy.auto.tfvars.json
+
+      - name: Deploy the ECS service
+        run: terraform apply -auto-approve -input=false -var-file=deploy.auto.tfvars.json
+
+      - name: Publish deployment summary
+        run: |
+          {
+            echo "### Deployment complete"
+            echo
+            echo "- Image: \`${{ steps.image.outputs.image_uri }}\`"
+            echo "- ALB: \`$(terraform output -raw alb_dns_name)\`"
+            echo "- ECR: \`$(terraform output -raw ecr_repository_url)\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
