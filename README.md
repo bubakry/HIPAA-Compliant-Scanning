@@ -37,7 +37,7 @@ flowchart LR
     Bootstrap --> Image[Build and push FastAPI image to ECR]
     Image --> Deploy[Terraform apply service<br/>ECS Fargate + ALB]
 
-    Deploy --> AWS[AWS Account (your-account-id)]
+    Deploy --> AWS["AWS Account &lpar;your-account-id&rpar;"]
 
     AWS --> VPC[VPC<br/>public + private + isolated DB subnets]
     AWS --> KMS[KMS CMK<br/>logs, data, secrets, ECR]
