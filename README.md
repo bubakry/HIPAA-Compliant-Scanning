@@ -17,36 +17,6 @@ The repository uses:
 - Provide reusable patterns that other teams can adopt organization-wide
 - Shift security left in CI/CD so critical issues never merge or deploy
 
-## Architecture
-
-```mermaid
-flowchart LR
-    Dev[Developer Push / Pull Request] --> GH[GitHub Actions]
-
-    GH --> IaC[Checkov + tfsec<br/>Terraform misconfiguration scan]
-    GH --> App[Semgrep + Gitleaks + Dependency-Check<br/>SAST / secrets / SCA]
-    GH --> Container[Docker build + Trivy<br/>image + misconfig scan]
-
-    IaC --> Gate{All required controls pass?}
-    App --> Gate
-    Container --> Gate
-
-    Gate -- No --> Block[Block PR / fail push]
-    Gate -- Yes --> Plan[Terraform plan<br/>OIDC read-only role]
-    Plan --> Bootstrap[Terraform apply bootstrap<br/>ECR + core HIPAA infra]
-    Bootstrap --> Image[Build and push FastAPI image to ECR]
-    Image --> Deploy[Terraform apply service<br/>ECS Fargate + ALB]
-
-    Deploy --> AWS["AWS Account &lpar;your-account-id&rpar;"]
-
-    AWS --> VPC[VPC<br/>public + private + isolated DB subnets]
-    AWS --> KMS[KMS CMK<br/>logs, data, secrets, ECR]
-    AWS --> S3[S3<br/>regulated data + CloudTrail + ALB logs]
-    AWS --> RDS[RDS PostgreSQL<br/>encrypted, Multi-AZ, forced TLS]
-    AWS --> CT[CloudTrail + VPC Flow Logs<br/>audit evidence]
-    AWS --> ECS[ECS Fargate<br/>private tasks, CloudWatch logs]
-```
-
 ## Project Structure
 
 ```text
