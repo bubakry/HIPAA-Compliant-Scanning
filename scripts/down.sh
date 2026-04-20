@@ -37,7 +37,7 @@ for arg in "$@"; do
 done
 
 resolve_config
-preflight
+preflight "destroy"
 
 warn "About to destroy the HIPAA-aligned stack in account ${ACCOUNT_ID_TF} / ${AWS_REGION}."
 warn "Resources affected: VPC, RDS, S3 (versioned), KMS CMK, Secrets Manager, CloudTrail, IAM OIDC roles, ECR, ALB (if enabled)."
