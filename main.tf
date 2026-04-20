@@ -23,30 +23,6 @@ locals {
   ]
 }
 
-check "service_requires_container_image" {
-  assert {
-    condition     = !var.enable_service || var.container_image != null
-    error_message = "Set container_image when enable_service is true."
-  }
-}
-
-check "service_requires_tls_certificate" {
-  assert {
-    condition     = !var.enable_service || var.acm_certificate_arn != null
-    error_message = "Set acm_certificate_arn when enable_service is true so HTTPS is enforced."
-  }
-}
-
-check "dns_configuration_must_be_paired" {
-  assert {
-    condition = (
-      (var.application_domain_name == null && var.route53_zone_id == null) ||
-      (var.application_domain_name != null && var.route53_zone_id != null)
-    )
-    error_message = "application_domain_name and route53_zone_id must either both be set or both be null."
-  }
-}
-
 module "hipaa_infra" {
   source = "./modules/hipaa-infra"
 

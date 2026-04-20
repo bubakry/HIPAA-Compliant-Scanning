@@ -145,6 +145,11 @@ variable "acm_certificate_arn" {
   type        = string
   default     = null
   nullable    = true
+
+  validation {
+    condition     = !var.enable_service || var.acm_certificate_arn != null
+    error_message = "Set acm_certificate_arn when enable_service is true so HTTPS is enforced."
+  }
 }
 
 variable "application_domain_name" {
@@ -152,6 +157,14 @@ variable "application_domain_name" {
   type        = string
   default     = null
   nullable    = true
+
+  validation {
+    condition = (
+      (var.application_domain_name == null && var.route53_zone_id == null) ||
+      (var.application_domain_name != null && var.route53_zone_id != null)
+    )
+    error_message = "application_domain_name and route53_zone_id must either both be set or both be null."
+  }
 }
 
 variable "route53_zone_id" {
@@ -166,6 +179,11 @@ variable "container_image" {
   type        = string
   default     = null
   nullable    = true
+
+  validation {
+    condition     = !var.enable_service || var.container_image != null
+    error_message = "Set container_image when enable_service is true."
+  }
 }
 
 variable "container_port" {

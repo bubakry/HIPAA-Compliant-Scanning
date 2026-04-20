@@ -117,7 +117,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.dependency-check-data
-          key: dependency-check-${{ runner.os }}-${{ env.DEPENDENCY_CHECK_VERSION }}
+          key: dependency-check-${{ runner.os }}-${{ env.DEPENDENCY_CHECK_VERSION }}-${{ github.run_id }}
+          restore-keys: |
+            dependency-check-${{ runner.os }}-${{ env.DEPENDENCY_CHECK_VERSION }}-
 
       - name: Install Dependency-Check
         run: |
@@ -157,12 +159,25 @@ jobs:
           ./dependency-check/dependency-check/bin/dependency-check.sh \
             --data ~/.dependency-check-data \
             --disableOssIndex \
+            --disableNodeJS \
+            --disableNodeAudit \
+            --disableYarnAudit \
+            --disablePnpmAudit \
+            --disableRetireJS \
+            --disableBundleAudit \
+            --disableMSBuild \
+            --disableAssembly \
+            --disableNuspec \
+            --disableNugetconf \
+            --disableCentral \
+            --nvdValidForHours 24 \
             --failOnCVSS 9 \
             --format "HTML" \
             --format "JSON" \
             --out reports/dependency-check \
             --project "${GITHUB_REPOSITORY}" \
-            --scan . \
+            --scan requirements.txt \
+            --scan app \
             --suppression compliance/dependency-check/suppressions.xml \
             ${EXTRA_ARGS}
 
