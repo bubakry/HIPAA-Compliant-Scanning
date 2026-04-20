@@ -205,6 +205,9 @@ jobs:
           scan-type: fs
           scan-ref: .
           trivy-config: compliance/trivy/trivy.yaml
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
           format: sarif
           output: trivy-fs.sarif
           version: ${{ env.TRIVY_VERSION }}
@@ -223,6 +226,9 @@ jobs:
           image-ref: local/hipaa-fastapi:${{ github.sha }}
           scan-type: image
           trivy-config: compliance/trivy/trivy.yaml
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
           format: sarif
           output: trivy-image.sarif
           version: ${{ env.TRIVY_VERSION }}

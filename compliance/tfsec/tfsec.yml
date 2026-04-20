@@ -1,2 +1,16 @@
 minimum_severity: HIGH
 soft_fail: false
+
+# Documented suppressions. Each entry below is an intentional architectural
+# decision, not an oversight.
+exclude:
+  # GitHub OIDC plan/apply roles and KMS key policies intentionally use
+  # resource wildcards. The OIDC trust policy (subject claim + branch
+  # restriction) is the real blast-radius control, and a KMS key policy
+  # referencing "*" in its own-key statement is the documented AWS pattern.
+  # Same rationale captured under Checkov CKV_AWS_107-111, 356.
+  - aws-iam-no-policy-wildcards
+  # ALB access logs only support SSE-S3 (AWS hard constraint). The regulated
+  # data bucket still enforces SSE-KMS. Same rationale captured under
+  # Checkov CKV_AWS_145.
+  - aws-s3-encryption-customer-key
