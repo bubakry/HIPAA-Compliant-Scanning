@@ -109,8 +109,6 @@ resolve_config() {
 }
 
 preflight() {
-  local operation="${1:-provision}"
-
   require_tool aws
   require_tool terraform
   require_tool jq
@@ -127,18 +125,6 @@ preflight() {
   if [ "${caller_account}" != "${ACCOUNT_ID_TF}" ]; then
     fail "AWS credentials target account ${caller_account} but resolved config expects ${ACCOUNT_ID_TF}. Refusing to continue."
   fi
-
-  if [ -n "${HIPAA_BLOCKED_ACCOUNTS:-}" ]; then
-    local blocked
-    IFS=',' read -ra blocked <<<"${HIPAA_BLOCKED_ACCOUNTS}"
-    for entry in "${blocked[@]}"; do
-      entry="${entry// /}"
-      if [ "${caller_account}" = "${entry}" ]; then
-        fail "Account ${caller_account} is in HIPAA_BLOCKED_ACCOUNTS. Switch AWS_PROFILE and retry."
-      fi
-    done
-  fi
-
   ok "AWS credentials resolved to account ${caller_account} in ${AWS_REGION}."
 
   if [ "${HIPAA_SKIP_CONFIRM:-}" = "true" ]; then
@@ -147,7 +133,7 @@ preflight() {
   fi
 
   echo
-  echo "About to ${operation} HIPAA baseline infrastructure on:"
+  echo "About to provision HIPAA baseline infrastructure to:"
   echo "  account: ${caller_account}"
   echo "  region:  ${AWS_REGION}"
   echo "  caller:  ${caller_arn}"

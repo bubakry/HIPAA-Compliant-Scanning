@@ -33,7 +33,7 @@ for arg in "$@"; do
 done
 
 resolve_config
-preflight "provision"
+preflight
 ensure_state_bucket
 ensure_lock_table
 terraform_init
