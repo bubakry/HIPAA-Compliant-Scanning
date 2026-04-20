@@ -14,3 +14,4 @@ docs/reports/*.txt
 docs/reports/*.json
 docs/reports/*.sarif
 .DS_Store
+RUNBOOK.md
