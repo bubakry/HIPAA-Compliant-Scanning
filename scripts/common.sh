@@ -119,12 +119,29 @@ preflight() {
   caller="$(aws sts get-caller-identity --output json 2>/dev/null || true)"
   [ -n "${caller}" ] || fail "Unable to reach AWS STS. Run 'aws sso login' or configure credentials, then retry."
 
-  local caller_account
+  local caller_account caller_arn
   caller_account="$(jq -r '.Account' <<<"${caller}")"
+  caller_arn="$(jq -r '.Arn' <<<"${caller}")"
   if [ "${caller_account}" != "${ACCOUNT_ID_TF}" ]; then
     fail "AWS credentials target account ${caller_account} but resolved config expects ${ACCOUNT_ID_TF}. Refusing to continue."
   fi
   ok "AWS credentials resolved to account ${caller_account} in ${AWS_REGION}."
+
+  if [ "${HIPAA_SKIP_CONFIRM:-}" = "true" ]; then
+    warn "HIPAA_SKIP_CONFIRM=true — skipping interactive confirmation."
+    return
+  fi
+
+  echo
+  echo "About to provision HIPAA baseline infrastructure to:"
+  echo "  account: ${caller_account}"
+  echo "  region:  ${AWS_REGION}"
+  echo "  caller:  ${caller_arn}"
+  echo
+  printf "Type YES to proceed: "
+  local answer=""
+  read -r answer
+  [ "${answer}" = "YES" ] || fail "Aborted by user."
 }
 
 ensure_state_bucket() {
