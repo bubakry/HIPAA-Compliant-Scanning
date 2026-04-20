@@ -1,0 +1,87 @@
+name: Dependency Scan
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: dependency-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: "21"
+  DEPENDENCY_CHECK_VERSION: "12.2.1"
+
+jobs:
+  dependency-check:
+    name: OWASP Dependency-Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Cache Dependency-Check database
+        uses: actions/cache@v4
+        with:
+          path: ~/.dependency-check-data
+          key: dependency-check-${{ runner.os }}-${{ env.DEPENDENCY_CHECK_VERSION }}-${{ github.run_id }}
+          restore-keys: |
+            dependency-check-${{ runner.os }}-${{ env.DEPENDENCY_CHECK_VERSION }}-
+
+      - name: Install Dependency-Check
+        run: |
+          curl -sSfL "https://github.com/dependency-check/DependencyCheck/releases/download/v${DEPENDENCY_CHECK_VERSION}/dependency-check-${DEPENDENCY_CHECK_VERSION}-release.zip" -o dependency-check.zip
+          unzip -q dependency-check.zip -d dependency-check
+
+      - name: Dependency-Check SCA scan
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: |
+          mkdir -p reports/dependency-check
+          EXTRA_ARGS=""
+          if [ -n "${NVD_API_KEY}" ]; then
+            EXTRA_ARGS="--nvdApiKey ${NVD_API_KEY}"
+          fi
+
+          ./dependency-check/dependency-check/bin/dependency-check.sh \
+            --data ~/.dependency-check-data \
+            --disableOssIndex \
+            --disableNodeJS \
+            --disableNodeAudit \
+            --disableYarnAudit \
+            --disablePnpmAudit \
+            --disableRetireJs \
+            --disableBundleAudit \
+            --disableMSBuild \
+            --disableAssembly \
+            --disableNuspec \
+            --disableNugetconf \
+            --disableCentral \
+            --nvdValidForHours 24 \
+            --failOnCVSS 9 \
+            --format "HTML" \
+            --format "JSON" \
+            --out reports/dependency-check \
+            --project "${GITHUB_REPOSITORY}" \
+            --scan requirements.txt \
+            --scan app \
+            --suppression compliance/dependency-check/suppressions.xml \
+            ${EXTRA_ARGS}
+
+      - name: Upload Dependency-Check reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-reports
+          path: reports/dependency-check
