@@ -168,7 +168,7 @@ Build behavior:
 
 ### 1. Fork the repository
 
-Fork this repository into your own GitHub account or organization.
+Fork this repository.
 
 ### 2. Create Terraform remote state
 
