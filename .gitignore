@@ -7,7 +7,7 @@ __pycache__/
 *.tfstate
 *.tfstate.*
 coverage.xml
-dependency-check/
+/dependency-check/
 reports/
 terraform.tfvars
 docs/reports/*.txt
