@@ -17,33 +17,70 @@ env:
   TERRAFORM_VERSION: "1.14.8"
 
 jobs:
-  plan:
+  validate:
+    name: Terraform fmt + validate (no backend)
     runs-on: ubuntu-latest
 
     steps:
-      - name: Validate required secrets
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd  # v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform format check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init (no backend)
+        run: terraform init -backend=false -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+  detect-secrets:
+    name: Detect plan secrets
+    runs-on: ubuntu-latest
+    outputs:
+      have_plan_secrets: ${{ steps.check.outputs.have_plan_secrets }}
+    steps:
+      - name: Check that plan secrets are configured
+        id: check
         env:
           AWS_TERRAFORM_PLAN_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
           TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
           TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
         run: |
-          for variable in AWS_TERRAFORM_PLAN_ROLE_ARN TF_STATE_BUCKET TF_STATE_LOCK_TABLE; do
-            if [ -z "${!variable}" ]; then
-              echo "::error::${variable} is required for terraform-plan.yml"
-              exit 1
-            fi
-          done
+          if [ -n "${AWS_TERRAFORM_PLAN_ROLE_ARN}" ] \
+             && [ -n "${TF_STATE_BUCKET}" ] \
+             && [ -n "${TF_STATE_LOCK_TABLE}" ]; then
+            echo "have_plan_secrets=true" >> "${GITHUB_OUTPUT}"
+            echo "Plan secrets present; the live plan job will run."
+          else
+            echo "have_plan_secrets=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Plan secrets not configured; the live plan job is skipped. The validate job still gates the PR."
+          fi
 
+  plan:
+    name: Terraform plan (live, with backend)
+    needs:
+      - validate
+      - detect-secrets
+    if: needs.detect-secrets.outputs.have_plan_secrets == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd  # v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v5.1.1
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708  # v5.1.1
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_TERRAFORM_PLAN_ROLE_ARN }}
@@ -76,7 +113,7 @@ jobs:
         run: terraform show -no-color tfplan > plan.txt
 
       - name: Publish plan artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: terraform-plan
           path: plan.txt
