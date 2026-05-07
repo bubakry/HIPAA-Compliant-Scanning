@@ -21,7 +21,8 @@ env:
   TERRAFORM_VERSION: "1.14.8"
 
 jobs:
-  apply:
+  detect-secrets:
+    name: Detect apply secrets
     if: |
       github.event_name == 'workflow_dispatch' ||
       (
@@ -31,23 +32,36 @@ jobs:
         github.event.workflow_run.head_branch == 'main'
       )
     runs-on: ubuntu-latest
-    environment: production
-
+    outputs:
+      have_apply_secrets: ${{ steps.check.outputs.have_apply_secrets }}
     steps:
-      - name: Validate required secrets
+      - name: Check that apply secrets are configured
+        id: check
         env:
           AWS_TERRAFORM_APPLY_ROLE_ARN: ${{ secrets.AWS_TERRAFORM_APPLY_ROLE_ARN }}
           TF_STATE_BUCKET: ${{ secrets.TF_STATE_BUCKET }}
           TF_STATE_LOCK_TABLE: ${{ secrets.TF_STATE_LOCK_TABLE }}
           ACM_CERTIFICATE_ARN: ${{ vars.ACM_CERTIFICATE_ARN }}
         run: |
-          for variable in AWS_TERRAFORM_APPLY_ROLE_ARN TF_STATE_BUCKET TF_STATE_LOCK_TABLE ACM_CERTIFICATE_ARN; do
-            if [ -z "${!variable}" ]; then
-              echo "::error::${variable} is required for terraform-apply.yml"
-              exit 1
-            fi
-          done
+          if [ -n "${AWS_TERRAFORM_APPLY_ROLE_ARN}" ] \
+             && [ -n "${TF_STATE_BUCKET}" ] \
+             && [ -n "${TF_STATE_LOCK_TABLE}" ] \
+             && [ -n "${ACM_CERTIFICATE_ARN}" ]; then
+            echo "have_apply_secrets=true" >> "${GITHUB_OUTPUT}"
+            echo "Apply secrets present; the apply job will run."
+          else
+            echo "have_apply_secrets=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::Apply secrets not configured; the apply job is skipped. Configure repo secrets and the ACM_CERTIFICATE_ARN variable to enable real deploys."
+          fi
 
+  apply:
+    name: Terraform apply (live)
+    needs: detect-secrets
+    if: needs.detect-secrets.outputs.have_apply_secrets == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
