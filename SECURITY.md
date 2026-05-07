@@ -4,7 +4,6 @@
 
 If you discover a security issue in this repository, please do **not** open a
 public GitHub issue. Instead, open a [private security advisory](https://github.com/bubakry/HIPAA-Compliant-Scanning/security/advisories/new)
-on this repository.
 
 Please include:
 
