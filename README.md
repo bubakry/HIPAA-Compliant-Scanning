@@ -16,7 +16,7 @@
 
 ## Why this exists
 
-Healthcare workloads carry a fixed compliance burden — encryption at rest,
+Healthcare workloads carry a fixed compliance burden - encryption at rest,
 TLS in transit, audit logs, least privilege, no plaintext PHI in CI. Most
 teams document those controls in a wiki and hope reviewers catch gaps.
 This repo encodes the same controls as **Terraform modules + CI gates** so
